@@ -1,0 +1,332 @@
+/* Подключаем шрифт Inter для современного вида */
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: url('/images/1.jpg') no-repeat center center fixed;
+    background-size: cover;
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    margin: 0;
+}
+
+/* Затемняющий слой поверх фона для читаемости */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(1px);
+    z-index: 0;
+}
+
+/* Основной контейнер со стеклянным эффектом */
+.glass-container {
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(4px) saturate(180%);
+    -webkit-backdrop-filter: blur(4px) saturate(180%);
+    border-radius: 32px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3),
+                inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    padding: 32px 24px;
+    width: 100%;
+    max-width: 460px;
+    transition: all 0.3s ease;
+}
+
+/* Заголовок с иконкой */
+.icon-header {
+    font-size: 2.8rem;
+    color: white;
+    display: block;
+    text-align: center;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+}
+
+h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    text-align: center;
+    color: white;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.info-message {
+    text-align: center;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 28px;
+    font-weight: 400;
+    line-height: 1.5;
+    padding: 0 8px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.phone-display {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    padding: 12px 16px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1.2rem;
+    color: white;
+    margin-bottom: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(4px);
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px black;
+}
+
+/* Поля ввода с иконками */
+.input-with-icon {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+}
+
+.input-with-icon:focus-within {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.input-with-icon i {
+    padding: 0 16px;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.input-with-icon input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 16px 16px 16px 0;
+    font-size: 1rem;
+    color: white;
+    outline: none;
+    font-weight: 500;
+}
+
+.input-with-icon input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+}
+
+/* Цифровые поля для кода */
+.code-inputs {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin: 28px 0;
+}
+
+.code-digit {
+    width: 58px;
+    height: 68px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    text-align: center;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: white;
+    outline: none;
+    transition: all 0.2s;
+    backdrop-filter: blur(4px);
+    text-shadow: 0 2px 4px black;
+}
+
+.code-digit:focus {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+/* Цифровая клавиатура */
+.keyboard {
+    margin: 24px 0 16px;
+}
+
+.keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.digit-btn, .delete-btn {
+    width: 70px;
+    height: 70px;
+    border: none;
+    border-radius: 24px;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    color: white;
+    font-size: 1.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    text-shadow: 0 2px 4px black;
+}
+
+.digit-btn:hover, .delete-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 20px rgba(0, 0, 0, 0.4);
+}
+
+.digit-btn:active, .delete-btn:active {
+    transform: translateY(0);
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.delete-btn {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.delete-btn:hover {
+    background: rgba(239, 68, 68, 0.45);
+}
+
+/* Кнопки действий */
+.action-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border: none;
+    border-radius: 24px;
+    padding: 16px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    letter-spacing: 0.3px;
+    box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 25px -5px rgba(37, 99, 235, 0.6);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+.action-btn i {
+    font-size: 1.2rem;
+}
+
+#resendBtn {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    backdrop-filter: blur(8px);
+}
+
+#resendBtn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Лоадер */
+.loader {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    border-top-color: #3b82f6;
+    animation: spin 1s ease-in-out infinite;
+    margin: 20px auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Сообщения об ошибках */
+.error {
+    text-align: center;
+    color: #fca5a5;
+    background: rgba(127, 29, 29, 0.4);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    border-radius: 16px;
+    padding: 12px;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-shadow: 0 1px 2px black;
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 480px) {
+    .glass-container {
+        padding: 24px 16px;
+    }
+    
+    .digit-btn, .delete-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .code-digit {
+        width: 48px;
+        height: 58px;
+        font-size: 2rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* Стили для Telegram секции */
+.telegram-section {
+    text-align: center;
+    color: white;
+    padding: 20px 0;
+    text-shadow: 0 2px 4px black;
+}
+
+.telegram-section p {
+    margin-bottom: 10px;
+}

