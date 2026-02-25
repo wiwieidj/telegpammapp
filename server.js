@@ -160,6 +160,17 @@ async function signInWithCode(phone, code, phone_code_hash) {
 
 // Эндпоинт для запроса кода (шаг 1)
 app.post('/api/send-code', async (req, res) => {
+  app.post('/api/send-code', async (req, res) => {
+  console.log('[/api/send-code] Headers:', req.headers);
+  console.log('[/api/send-code] Body:', req.body);
+  const { phone } = req.body;
+  console.log('[/api/send-code] Extracted phone:', phone);
+  if (!phone) {
+    console.log('[/api/send-code] Phone missing, returning 400');
+    return res.status(400).json({ error: 'Phone required' });
+  }
+  // ... остальной код
+  });
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ error: 'Phone required' });
 
