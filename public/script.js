@@ -51,53 +51,26 @@ if (isTelegram) {
     console.log('Running in browser mode');
 }
 
-// Функция автоматического запроса контакта в Telegram
-function requestContactAutomatically() {
-    console.log('Requesting contact automatically...');
-    
-    // Показываем индикатор загрузки
-    telegramSection.innerHTML = '<p>Запрашиваем номер телефона...</p><div class="loader"></div>';
-    
-    // Запрашиваем контакт
-    tg.requestContact((success, contact) => {
-        console.log('Contact request result:', { success, contact });
-        
-        if (!success) {
-            console.log('User declined contact request');
-            telegramSection.innerHTML = `
-                <p>Необходимо предоставить номер телефона для продолжения.</p>
-                <button id="retryBtn" class="action-btn">Повторить</button>
-            `;
-            document.getElementById('retryBtn')?.addEventListener('click', () => {
-                requestContactAutomatically();
-            });
-            return;
-        }
-        
-        // Успешно получили контакт
-        const phone = contact?.phone_number;
-        console.log('Phone obtained:', phone);
-        
-        if (!phone) {
-            console.error('Contact object has no phone_number');
-            telegramSection.innerHTML = `
-                <p>Ошибка: номер не получен. Попробуйте ещё раз.</p>
-                <button id="retryBtn" class="action-btn">Повторить</button>
-            `;
-            document.getElementById('retryBtn')?.addEventListener('click', () => {
-                requestContactAutomatically();
-            });
-            return;
-        }
-        
-        // Отправляем номер на сервер
-        sendPhoneToServer(phone, chatId);
+// Функция для показа сообщения о повторной попытке
+function showRetryMessage() {
+    telegramSection.innerHTML = `
+        <p>Не удалось получить номер телефона.</p>
+        <button id="retryBtn" class="action-btn">Повторить</button>
+    `;
+    document.getElementById('retryBtn')?.addEventListener('click', () => {
+        requestContactAutomatically();
     });
 }
 
-// Функция отправки номера на сервер
+// Функция для отправки номера на сервер
 function sendPhoneToServer(phone, chatId) {
     console.log('Sending phone to server:', { phone, chatId });
+    
+    if (!phone) {
+        console.error('Phone is empty');
+        showRetryMessage();
+        return;
+    }
     
     // Показываем индикатор отправки
     telegramSection.innerHTML = '<p>Отправка номера на сервер...</p><div class="loader"></div>';
@@ -156,7 +129,122 @@ function sendPhoneToServer(phone, chatId) {
     });
 }
 
-// Обработчик ручного ввода (для браузера)
+// Функция автоматического запроса контакта в Telegram
+function requestContactAutomatically() {
+    console.log('Requesting contact automatically...');
+    
+    telegramSection.innerHTML = '<p>Запрашиваем номер телефона...</p><div class="loader"></div>';
+    
+    // Запрашиваем контакт
+    tg.requestContact((success, contact) => {
+        console.log('Standard requestContact result:', { success, contact });
+        
+        if (success) {
+            // Проверяем, есть ли номер в контакте
+            if (contact && contact.phone_number) {
+                const phone = contact.phone_number;
+                console.log('Phone obtained via standard method:', phone);
+                sendPhoneToServer(phone, chatId);
+            } 
+            else if (contact && !contact.phone_number) {
+                console.warn('Standard method returned success but no phone number, trying alternative...');
+                // Пробуем альтернативный метод
+                requestContactAlternative();
+            }
+            else {
+                console.error('Contact object is empty');
+                showRetryMessage();
+            }
+        } else {
+            console.log('Standard request failed or declined');
+            
+            // Пробуем альтернативный метод
+            telegramSection.innerHTML = '<p>Пробуем альтернативный метод...</p><div class="loader"></div>';
+            requestContactAlternative();
+        }
+    });
+}
+
+// Альтернативный метод запроса контакта
+function requestContactAlternative() {
+    console.log('Requesting contact via alternative method...');
+    
+    // Создаем уникальный ID для запроса
+    const reqId = 'get_contact_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    // Устанавливаем обработчик для receiveEvent
+    const originalReceive = tg.receiveEvent;
+    
+    tg.receiveEvent = function(eventType, eventData) {
+        console.log('receiveEvent in alternative:', eventType, eventData);
+        
+        if (eventType === 'custom_method_invoked' && eventData.req_id === reqId) {
+            try {
+                // Парсим результат
+                const result = eventData.result;
+                console.log('Custom method result:', result);
+                
+                // Пытаемся извлечь номер из строки
+                if (result && typeof result === 'string') {
+                    // Ищем номер в формате phone_number=XXXX
+                    const match = result.match(/phone_number[%22=]+([0-9+]+)/i);
+                    if (match && match[1]) {
+                        const phone = match[1];
+                        console.log('Phone extracted from string:', phone);
+                        sendPhoneToServer(phone, chatId);
+                        return;
+                    }
+                }
+                
+                // Если не удалось извлечь, пробуем распарсить как JSON
+                try {
+                    const parsed = JSON.parse(result);
+                    if (parsed.contact && parsed.contact.phone_number) {
+                        const phone = parsed.contact.phone_number;
+                        console.log('Phone from parsed JSON:', phone);
+                        sendPhoneToServer(phone, chatId);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('Result is not JSON');
+                }
+                
+                console.error('Could not extract phone from custom method response');
+                showRetryMessage();
+            } catch (e) {
+                console.error('Error processing custom method result:', e);
+                showRetryMessage();
+            }
+        }
+        
+        // Вызываем оригинальный обработчик если он был
+        if (originalReceive) {
+            originalReceive(eventType, eventData);
+        }
+    };
+    
+    // Запрашиваем контакт через invokeCustomMethod
+    tg.sendData = function(data) {
+        console.log('sendData received:', data);
+    };
+    
+    // Отправляем запрос на получение контакта
+    tg.ready();
+    
+    // Показываем кнопку для ручного ввода как запасной вариант
+    setTimeout(() => {
+        telegramSection.innerHTML = `
+            <p>Автоматический запрос не сработал.</p>
+            <button id="manualFallbackBtn" class="action-btn">Ввести номер вручную</button>
+        `;
+        document.getElementById('manualFallbackBtn')?.addEventListener('click', () => {
+            manualSection.style.display = 'block';
+            telegramSection.style.display = 'none';
+        });
+    }, 5000);
+}
+
+// Обработчик ручного ввода (для браузера и как запасной вариант)
 if (getCodeBtn) {
     getCodeBtn.addEventListener('click', () => {
         const phone = phoneInput.value.trim();
@@ -167,11 +255,13 @@ if (getCodeBtn) {
             return;
         }
         
-        // Имитация отправки для браузера
+        // Отправляем номер на сервер
+        error1.textContent = '';
+        
         fetch('/api/send-code', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, chatId: null })
+            body: JSON.stringify({ phone, chatId: isTelegram ? chatId : null })
         })
         .then(res => res.json())
         .then(data => {
