@@ -6,7 +6,7 @@ const chatId = isTelegram ? tg.initDataUnsafe.user.id : null;
 
 console.log('App initialized:', { isTelegram, chatId, initData: tg?.initData });
 
-// DOM elements (assumed to exist in HTML)
+// DOM elements – make sure these IDs exist in your HTML
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
@@ -41,11 +41,25 @@ let codeRequested = false;
 if (isTelegram) {
     manualSection.style.display = 'none';
     telegramSection.style.display = 'block';
-    requestContactAutomatically();
+    showShareContactButton();
 } else {
     manualSection.style.display = 'block';
     telegramSection.style.display = 'none';
     console.log('Running in browser mode');
+}
+
+// Show the share contact button (user-initiated action)
+function showShareContactButton() {
+    telegramSection.innerHTML = `
+        <p>Please share your phone number to continue</p>
+        <button id="shareContactBtn" class="action-btn">Share Contact</button>
+        <button id="manualFallbackBtn" class="action-btn">Enter manually</button>
+    `;
+    document.getElementById('shareContactBtn').addEventListener('click', requestContactAutomatically);
+    document.getElementById('manualFallbackBtn').addEventListener('click', () => {
+        manualSection.style.display = 'block';
+        telegramSection.style.display = 'none';
+    });
 }
 
 // Function to send phone to server
@@ -99,40 +113,31 @@ function sendPhoneToServer(phone, chatId) {
     })
     .catch(error => {
         console.error('Error sending phone to server:', error);
-        telegramSection.innerHTML = `
-            <p>Error: ${error.message}</p>
-            <button id="retryBtn" class="action-btn">Try again</button>
-            <button id="manualFallbackBtn" class="action-btn">Enter manually</button>
-        `;
-        document.getElementById('retryBtn')?.addEventListener('click', requestContactAutomatically);
-        document.getElementById('manualFallbackBtn')?.addEventListener('click', () => {
-            manualSection.style.display = 'block';
-            telegramSection.style.display = 'none';
-        });
+        showRetryMessage(error.message);
     });
 }
 
-// Automatic contact request in Telegram
+// Contact request triggered by button click
 function requestContactAutomatically() {
-    console.log('Requesting contact automatically...');
+    console.log('Requesting contact...');
 
     telegramSection.innerHTML = '<p>Requesting phone number...</p><div class="loader"></div>';
 
     if (typeof tg.requestContact !== 'function') {
         console.warn('requestContact method not available');
-        telegramSection.innerHTML = `
-            <p>Contact request function is not available in this environment.</p>
-            <button id="manualFallbackBtn" class="action-btn">Enter manually</button>
-        `;
-        document.getElementById('manualFallbackBtn')?.addEventListener('click', () => {
-            manualSection.style.display = 'block';
-            telegramSection.style.display = 'none';
-        });
+        showRetryMessage('Contact request function is not available in this environment.');
         return;
     }
 
+    // Timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+        console.warn('requestContact timed out');
+        showRetryMessage('The contact request is taking too long. Please try again or enter manually.');
+    }, 10000); // 10 seconds
+
     tg.requestContact()
         .then(contact => {
+            clearTimeout(timeoutId);
             console.log('Contact obtained:', contact);
             if (contact && contact.phone_number) {
                 const phone = contact.phone_number;
@@ -144,37 +149,32 @@ function requestContactAutomatically() {
             }
         })
         .catch(error => {
+            clearTimeout(timeoutId);
             console.error('Error requesting contact:', error);
             let errorMessage = 'User declined or an error occurred.';
             if (error.message) errorMessage = error.message;
-
-            telegramSection.innerHTML = `
-                <p>Failed to get phone number.</p>
-                <p>${errorMessage}</p>
-                <button id="manualFallbackBtn" class="action-btn">Enter manually</button>
-            `;
-            document.getElementById('manualFallbackBtn')?.addEventListener('click', () => {
-                manualSection.style.display = 'block';
-                telegramSection.style.display = 'none';
-            });
+            showRetryMessage(errorMessage);
         });
 }
 
-// Helper to show retry message
+// Helper to show retry message with options
 function showRetryMessage(customMessage = 'Failed to get phone number.') {
     telegramSection.innerHTML = `
         <p>${customMessage}</p>
-        <button id="retryBtn" class="action-btn">Retry</button>
+        <button id="retryBtn" class="action-btn">Try again</button>
         <button id="manualFallbackBtn" class="action-btn">Enter manually</button>
     `;
-    document.getElementById('retryBtn')?.addEventListener('click', requestContactAutomatically);
-    document.getElementById('manualFallbackBtn')?.addEventListener('click', () => {
+    document.getElementById('retryBtn').addEventListener('click', () => {
+        // Go back to the share contact button
+        showShareContactButton();
+    });
+    document.getElementById('manualFallbackBtn').addEventListener('click', () => {
         manualSection.style.display = 'block';
         telegramSection.style.display = 'none';
     });
 }
 
-// Manual phone input handler (browser or fallback)
+// Manual phone input handler
 if (getCodeBtn) {
     getCodeBtn.addEventListener('click', () => {
         const phone = phoneInput.value.trim();
